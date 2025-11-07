@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة ورش يمن الهجين | Yaman Workshop Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar h1 {
+            font-size: 24px;
+            color: #667eea;
+        }
+
+        .navbar .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .card .number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #333;
+            margin: 10px 0;
+        }
+
+        .card .label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        table th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: right;
+            font-weight: bold;
+            color: #667eea;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .login-container h2 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage" class="login-container">
+        <h2>🔧 نظام إدارة ورش يمن الهجين</h2>
+        <p style="text-align: center; color: #666; margin-bottom: 20px;">Yaman Workshop Management System</p>
+        
+        <div id="loginError" class="alert alert-error hidden"></div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">اسم المستخدم / Username</label>
+                <input type="text" id="username" name="username" required placeholder="admin">
+            </div>
+            <div class="form-group">
+                <label for="password">كلمة المرور / Password</label>
+                <input type="password" id="password" name="password" required placeholder="password">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">تسجيل الدخول / Login</button>
+        </form>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 5px;">
+            <p style="font-size: 12px; color: #004085; text-align: center;">
+                <strong>Demo Credentials:</strong><br>
+                Username: admin<br>
+                Password: any password
+            </p>
+        </div>
+    </div>
+
+    <!-- Dashboard Page -->
+    <div id="dashboardPage" class="hidden">
+        <nav class="navbar">
+            <h1>🔧 نظام إدارة ورش يمن الهجين</h1>
+            <div class="user-info">
+                <span id="userName">Admin</span>
+                <button class="btn btn-primary" onclick="logout()">تسجيل خروج / Logout</button>
+            </div>
+        </nav>
+
+        <div class="container">
+            <!-- Statistics Cards -->
+            <div class="dashboard-grid">
+                <div class="card">
+                    <h3>👥 العملاء / Customers</h3>
+                    <div class="number" id="totalCustomers">0</div>
+                    <div class="label">إجمالي العملاء</div>
+                </div>
+                <div class="card">
+                    <h3>🔧 أوامر العمل / Work Orders</h3>
+                    <div class="number" id="totalWorkOrders">0</div>
+                    <div class="label">إجمالي الأوامر</div>
+                </div>
+                <div class="card">
+                    <h3>✅ الفحوصات / Inspections</h3>
+                    <div class="number" id="totalInspections">0</div>
+                    <div class="label">إجمالي الفحوصات</div>
+                </div>
+                <div class="card">
+                    <h3>📋 الخدمات / Services</h3>
+                    <div class="number" id="totalServices">0</div>
+                    <div class="label">إجمالي الخدمات</div>
+                </div>
+            </div>
+
+            <!-- Customers List -->
+            <div class="section">
+                <h2>👥 قائمة العملاء / Customers List</h2>
+                <table id="customersTable">
+                    <thead>
+                        <tr>
+                            <th>الرقم / ID</th>
+                            <th>الاسم / Name</th>
+                            <th>الهاتف / Phone</th>
+                            <th>البريد الإلكتروني / Email</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- Services List -->
+            <div class="section">
+                <h2>📋 قائمة الخدمات / Services List</h2>
+                <table id="servicesTable">
+                    <thead>
+                        <tr>
+                            <th>الرقم / ID</th>
+                            <th>الاسم / Name</th>
+                            <th>الاسم بالعربي / Arabic Name</th>
+                            <th>السعر / Price (YER)</th>
+                            <th>المدة / Duration (min)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- Users List -->
+            <div class="section">
+                <h2>👤 قائمة المستخدمين / Users List</h2>
+                <table id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>الرقم / ID</th>
+                            <th>اسم المستخدم / Username</th>
+                            <th>الاسم الكامل / Full Name</th>
+                            <th>البريد / Email</th>
+                            <th>الدور / Role</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get base API URL
+        const API_BASE_URL = window.location.origin;
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+
+        // Check if user is logged in
+        if (authToken && currentUser) {
+            showDashboard();
+        } else {
+            showLogin();
+        }
+
+        // Login form handler
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    authToken = data.access_token;
+                    currentUser = data.user;
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    showDashboard();
+                } else {
+                    showError('Invalid username or password');
+                }
+            } catch (error) {
+                showError('Connection error. Please try again.');
+                console.error('Login error:', error);
+            }
+        });
+
+        function showLogin() {
+            document.getElementById('loginPage').classList.remove('hidden');
+            document.getElementById('dashboardPage').classList.add('hidden');
+        }
+
+        function showDashboard() {
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('dashboardPage').classList.remove('hidden');
+            if (currentUser) {
+                document.getElementById('userName').textContent = currentUser.full_name || currentUser.username;
+            }
+            loadDashboardData();
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            authToken = null;
+            currentUser = null;
+            showLogin();
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('loginError');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+            setTimeout(() => {
+                errorDiv.classList.add('hidden');
+            }, 5000);
+        }
+
+        async function loadDashboardData() {
+            try {
+                // Load dashboard stats
+                const statsResponse = await fetch(`${API_BASE_URL}/api/v1/dashboard/stats`);
+                const stats = await statsResponse.json();
+                
+                document.getElementById('totalCustomers').textContent = stats.total_customers;
+                document.getElementById('totalWorkOrders').textContent = stats.total_work_orders;
+                document.getElementById('totalInspections').textContent = stats.total_inspections;
+                document.getElementById('totalServices').textContent = stats.total_services;
+
+                // Load customers
+                const customersResponse = await fetch(`${API_BASE_URL}/api/v1/customers`);
+                const customers = await customersResponse.json();
+                renderCustomers(customers);
+
+                // Load services
+                const servicesResponse = await fetch(`${API_BASE_URL}/api/v1/services`);
+                const services = await servicesResponse.json();
+                renderServices(services);
+
+                // Load users
+                const usersResponse = await fetch(`${API_BASE_URL}/api/v1/users`);
+                const users = await usersResponse.json();
+                renderUsers(users);
+
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+
+        function renderCustomers(customers) {
+            const tbody = document.querySelector('#customersTable tbody');
+            tbody.innerHTML = customers.map(c => `
+                <tr>
+                    <td>${c.id}</td>
+                    <td>${c.name}</td>
+                    <td>${c.phone}</td>
+                    <td>${c.email || 'N/A'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderServices(services) {
+            const tbody = document.querySelector('#servicesTable tbody');
+            tbody.innerHTML = services.map(s => `
+                <tr>
+                    <td>${s.id}</td>
+                    <td>${s.name}</td>
+                    <td>${s.name_ar}</td>
+                    <td>${s.price.toLocaleString()}</td>
+                    <td>${s.duration}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderUsers(users) {
+            const tbody = document.querySelector('#usersTable tbody');
+            tbody.innerHTML = users.map(u => `
+                <tr>
+                    <td>${u.id}</td>
+                    <td>${u.username}</td>
+                    <td>${u.full_name}</td>
+                    <td>${u.email}</td>
+                    <td><span class="status status-active">${u.role}</span></td>
+                </tr>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
