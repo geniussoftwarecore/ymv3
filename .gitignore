@@ -1,10 +1,8 @@
 # Replit
-.replit
 .config/
 .upm/
 .cache/
 .pythonlibs/
-replit.nix
 uv.lock
 pyproject.toml
 
