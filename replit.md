@@ -2,9 +2,9 @@
 
 ## Project Overview
 This is a comprehensive workshop management system with a microservices architecture:
-- **Frontend**: Flutter web application (Multi-language: Arabic/English)
-- **Backend**: Multiple Python FastAPI microservices
-- **Database**: PostgreSQL
+- **Frontend**: HTML/JavaScript web application (Multi-language: Arabic/English)
+- **Backend**: Consolidated Python FastAPI application
+- **Database**: PostgreSQL (optional - currently using mock data)
 
 ## Original Architecture
 The project was designed with Docker Compose running:
@@ -18,34 +18,58 @@ The project was designed with Docker Compose running:
 - Nginx API Gateway (port 80)
 
 ## Replit Adaptation
-Since Replit doesn't support Docker, we've adapted the project to:
-1. Use Replit's built-in PostgreSQL database
-2. Run backend services directly with Python/FastAPI
-3. Run Flutter web app on port 5000 (frontend)
-4. Backend services run on localhost with different ports
+Since Replit doesn't support Docker or Flutter, we've adapted the project to:
+1. **Consolidated Backend**: Single FastAPI app (`app.py`) running on port 5000
+2. **Simple Frontend**: HTML/JavaScript web interface served by FastAPI
+3. **Mock Data**: System works with in-memory data initially
+4. **Database Ready**: PostgreSQL initialization script available when needed
 
 ## Current Status
 - **Date**: November 7, 2025
-- **Environment**: Replit (No Docker)
-- **Setup Stage**: ✅ Import Complete - Frontend Running
-- **Frontend**: Flutter web app is building and serving on port 5000
-- **Backend**: Python/FastAPI services ready, need database setup
-- **Database**: Needs to be created manually via Replit Database tool
+- **Environment**: Replit (No Docker, No Flutter)
+- **Setup Stage**: ✅ Basic System Running
+- **Frontend**: HTML/JavaScript dashboard running on port 5000
+- **Backend**: FastAPI consolidated application running on port 5000
+- **Database**: Mock data (PostgreSQL initialization available)
 
 ## What's Working
-- ✅ Flutter SDK installed (v3.24.5)
-- ✅ Python 3.11 with all FastAPI dependencies
-- ✅ Frontend workflow configured and running
-- ✅ Placeholder page serving while Flutter builds
-- ✅ Auto-refresh mechanism (rebuilds in background)
-- ✅ CORS configured for local development
+- ✅ Python 3.11 with all FastAPI dependencies installed
+- ✅ Consolidated FastAPI backend serving API and frontend
+- ✅ HTML/JavaScript dashboard with bilingual support (Arabic/English)
+- ✅ User authentication (mock)
+- ✅ Customer management endpoints
+- ✅ Service catalog endpoints
+- ✅ Dashboard statistics
+- ✅ Workflow configured and running on port 5000
+- ✅ CORS configured for development
 
-## Next Steps
+## Features Available
+### Backend API Endpoints
+- `GET /` - Frontend dashboard
+- `GET /health` - Health check
+- `POST /api/v1/auth/login` - User login
+- `GET /api/v1/users` - Get all users
+- `GET /api/v1/customers` - Get all customers
+- `GET /api/v1/services` - Get all services
+- `GET /api/v1/dashboard/stats` - Dashboard statistics
+- `GET /docs` - Swagger API documentation
+- `GET /redoc` - ReDoc API documentation
+
+### Frontend Features
+- Login page with demo credentials
+- Dashboard with statistics cards
+- Customer list view
+- Service catalog view
+- User management view
+- Bilingual interface (Arabic/English)
+
+## Optional: Database Setup
+To enable PostgreSQL database instead of mock data:
+
 1. **Create Database**: Use Replit's Database tab to create PostgreSQL
-2. **Run Init Scripts**: Execute SQL files from `database/init-scripts/`
-3. **Start Backend**: Configure backend services to use Replit database
-4. **Update API URLs**: Modify Flutter app to point to backend services
-5. **Test Full Stack**: Verify frontend-backend communication
+2. **Run Init Script**: `python init_database.py`
+3. **Update app.py**: Connect to DATABASE_URL environment variable
+4. **Restart**: The system will use real database
 
 ## Structure
 ```
