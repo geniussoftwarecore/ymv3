@@ -1,0 +1,85 @@
+# Docker Compose Override for Development
+# This file provides development-specific configurations
+# It will be automatically used alongside docker-compose.yml
+
+services:
+  user_management:
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    # Mount source code for development
+    volumes:
+      - ./services/user_management:/app:delegated
+    # Enable debugging
+    stdin_open: true
+    tty: true
+
+  service_catalog:
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./services/service_catalog:/app:delegated
+    stdin_open: true
+    tty: true
+
+  work_order_management:
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./services/work_order_management:/app:delegated
+    stdin_open: true
+    tty: true
+
+  chat:
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./services/chat:/app:delegated
+    stdin_open: true
+    tty: true
+
+  ai_chatbot:
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./services/ai_chatbot:/app:delegated
+    stdin_open: true
+    tty: true
+
+  reporting:
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./services/reporting:/app:delegated
+    stdin_open: true
+    tty: true
+
+  # Development database with persistent data
+  db:
+    # Expose database port for external connections
+    ports:
+      - "5433:5432"
+    # Add development-specific environment variables
+    environment:
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    # Persistent volume for development
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data/
+      # Optional: Add initialization scripts
+      # - ./init-scripts:/docker-entrypoint-initdb.d/
+
+volumes:
+  postgres_dev_data:
+    driver: local
