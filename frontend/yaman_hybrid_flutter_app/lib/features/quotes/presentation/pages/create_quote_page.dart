@@ -45,7 +45,6 @@ class _CreateQuotePageState extends ConsumerState<CreateQuotePage> {
       final totalPrice = unitPrice * quantity;
 
       return qr.QuoteItemModel(
-        quoteId: 0, // Will be set when creating quote
         serviceName: service['service_name'] ?? '',
         description: service['notes'] ?? '',
         quantity: quantity,
@@ -53,7 +52,6 @@ class _CreateQuotePageState extends ConsumerState<CreateQuotePage> {
         totalPrice: totalPrice,
         estimatedDuration: service['estimated_duration'],
         notes: service['notes'],
-        createdAt: DateTime.now(),
       );
     }).toList();
 

@@ -197,6 +197,17 @@ class WorkOrderRepository {
     }
   }
 
+  Future<void> updateTaskStatus(int taskId, String status) async {
+    try {
+      await _dio.put(
+        '${APIConstants.workOrderManagementServiceUrl}${APIEndpoints.taskUpdate.replaceFirst('{id}', taskId.toString())}',
+        data: {'status': status},
+      );
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   String _handleError(DioException e) {
     if (e.response?.statusCode == 404) {
       return 'أمر العمل غير موجود';

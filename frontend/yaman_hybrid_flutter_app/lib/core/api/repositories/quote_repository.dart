@@ -41,6 +41,26 @@ class QuoteItemModel {
         'estimated_duration': estimatedDuration,
         'notes': notes,
       };
+
+  QuoteItemModel copyWith({
+    String? serviceName,
+    String? description,
+    int? quantity,
+    double? unitPrice,
+    double? totalPrice,
+    int? estimatedDuration,
+    String? notes,
+  }) {
+    return QuoteItemModel(
+      serviceName: serviceName ?? this.serviceName,
+      description: description ?? this.description,
+      quantity: quantity ?? this.quantity,
+      unitPrice: unitPrice ?? this.unitPrice,
+      totalPrice: totalPrice ?? this.totalPrice,
+      estimatedDuration: estimatedDuration ?? this.estimatedDuration,
+      notes: notes ?? this.notes,
+    );
+  }
 }
 
 class QuoteModel {
