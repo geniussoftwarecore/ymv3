@@ -1,0 +1,78 @@
+# Replit
+.replit
+.config/
+.upm/
+.cache/
+.pythonlibs/
+replit.nix
+uv.lock
+pyproject.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.python-version
+venv/
+ENV/
+env/
+
+# Flutter/Dart
+frontend/yaman_hybrid_flutter_app/.dart_tool/
+frontend/yaman_hybrid_flutter_app/.flutter-plugins
+frontend/yaman_hybrid_flutter_app/.flutter-plugins-dependencies
+frontend/yaman_hybrid_flutter_app/.packages
+frontend/yaman_hybrid_flutter_app/build/
+frontend/yaman_hybrid_flutter_app/.pub/
+frontend/yaman_hybrid_flutter_app/pubspec.lock
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables
+.env.local
+.env.*.local
+
+# Logs
+*.log
+/tmp/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+postgres_data/
+
+# Docker (not used in Replit but keeping for reference)
+docker-compose.override.yml
+
+# Build artifacts
+frontend/yaman_hybrid_flutter_app/build/web/
+
+# Flutter home
+/home/runner/flutter/
+
+# Temporary files
+/tmp/flutter_build.log
