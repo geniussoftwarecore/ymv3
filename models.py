@@ -450,6 +450,94 @@ class DeletedMessage(Base):
     deletion_reason = Column(Text, nullable=True)
 
 
+class Inspection(Base):
+    __tablename__ = "inspections"
+    __table_args__ = {'schema': 'work_orders'}
+
+    id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(UUID(as_uuid=True), default=uuid_pkg.uuid4, unique=True, nullable=False)
+    inspection_number = Column(String(50), unique=True, nullable=False, index=True)
+    customer_id = Column(Integer, ForeignKey('user_management.users.id'), nullable=False, index=True)
+    inspector_id = Column(Integer, ForeignKey('user_management.users.id'), nullable=True, index=True)
+    created_by = Column(Integer, ForeignKey('user_management.users.id'), nullable=False)
+    
+    vehicle_make = Column(String(100), nullable=True)
+    vehicle_model = Column(String(100), nullable=True)
+    vehicle_year = Column(Integer, nullable=True)
+    vehicle_vin = Column(String(50), nullable=True, index=True)
+    vehicle_license_plate = Column(String(20), nullable=True, index=True)
+    vehicle_mileage = Column(Integer, nullable=True)
+    vehicle_color = Column(String(50), nullable=True)
+    vehicle_trim = Column(String(100), nullable=True)
+    
+    inspection_type = Column(String(100), default='General Inspection')
+    customer_complaint = Column(Text, nullable=True)
+    initial_assessment = Column(Text, nullable=True)
+    recommendations = Column(Text, nullable=True)
+    
+    status = Column(String(50), default='Draft', index=True)
+    priority = Column(priority_enum, default='Medium')
+    
+    inspection_date = Column(TIMESTAMP(timezone=True), nullable=True)
+    completed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    
+    estimated_repair_cost = Column(DECIMAL(12, 2), default=0.00)
+    notes = Column(Text, nullable=True)
+    attachments = Column(JSONB, nullable=True)
+    
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), index=True)
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class InspectionFault(Base):
+    __tablename__ = "inspection_faults"
+    __table_args__ = {'schema': 'work_orders'}
+
+    id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(UUID(as_uuid=True), default=uuid_pkg.uuid4, unique=True, nullable=False)
+    inspection_id = Column(Integer, ForeignKey('work_orders.inspections.id', ondelete='CASCADE'), nullable=False, index=True)
+    
+    category = Column(String(100), nullable=False)
+    fault_code = Column(String(50), nullable=True)
+    description = Column(Text, nullable=False)
+    severity = Column(String(50), default='Medium', index=True)
+    
+    location = Column(String(255), nullable=True)
+    estimated_cost = Column(DECIMAL(10, 2), nullable=True)
+    estimated_duration = Column(Integer, nullable=True)
+    
+    requires_immediate_attention = Column(Boolean, default=False)
+    is_safety_critical = Column(Boolean, default=False)
+    
+    recommended_action = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+    
+    created_by = Column(Integer, ForeignKey('user_management.users.id'), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
+class InspectionPhoto(Base):
+    __tablename__ = "inspection_photos"
+    __table_args__ = {'schema': 'work_orders'}
+
+    id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(UUID(as_uuid=True), default=uuid_pkg.uuid4, unique=True, nullable=False)
+    inspection_id = Column(Integer, ForeignKey('work_orders.inspections.id', ondelete='CASCADE'), nullable=False, index=True)
+    fault_id = Column(Integer, ForeignKey('work_orders.inspection_faults.id', ondelete='CASCADE'), nullable=True, index=True)
+    
+    file_path = Column(String(500), nullable=False)
+    file_name = Column(String(255), nullable=False)
+    file_size = Column(BigInteger, nullable=True)
+    mime_type = Column(String(100), nullable=True)
+    
+    photo_type = Column(String(50), default='general')
+    caption = Column(Text, nullable=True)
+    tags = Column(ARRAY(Text), nullable=True)
+    
+    uploaded_by = Column(Integer, ForeignKey('user_management.users.id'), nullable=False)
+    uploaded_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
 class AuditTrail(Base):
     __tablename__ = "audit_trail"
     __table_args__ = {'schema': 'audit_logs'}

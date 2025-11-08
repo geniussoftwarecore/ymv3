@@ -23,10 +23,15 @@ from models import (
     ServiceCategory as ServiceCategoryModel,
     WorkOrder as WorkOrderModel,
     ChatRoom as ChatRoomModel,
+    Inspection as InspectionModel,
+    InspectionFault as InspectionFaultModel,
+    InspectionPhoto as InspectionPhotoModel,
     UserRole,
     UserStatus,
     WorkOrderStatus
 )
+from file_utils import save_inspection_photo
+from fastapi import File, UploadFile
 
 app = FastAPI(
     title="Yaman Workshop Management System",
@@ -96,6 +101,77 @@ class DashboardStats(BaseModel):
     total_services: int
     active_work_orders: int
     completed_today: int
+
+
+class InspectionCreate(BaseModel):
+    customer_id: int
+    vehicle_make: Optional[str] = None
+    vehicle_model: Optional[str] = None
+    vehicle_year: Optional[int] = None
+    vehicle_vin: Optional[str] = None
+    vehicle_license_plate: Optional[str] = None
+    vehicle_mileage: Optional[int] = None
+    vehicle_color: Optional[str] = None
+    inspection_type: str = "General Inspection"
+    customer_complaint: Optional[str] = None
+    priority: str = "Medium"
+
+
+class InspectionFaultCreate(BaseModel):
+    inspection_id: int
+    category: str
+    description: str
+    severity: str = "Medium"
+    location: Optional[str] = None
+    estimated_cost: Optional[float] = None
+    estimated_duration: Optional[int] = None
+    requires_immediate_attention: bool = False
+    is_safety_critical: bool = False
+    recommended_action: Optional[str] = None
+
+
+class InspectionStatusUpdate(BaseModel):
+    status: str
+    notes: Optional[str] = None
+
+
+class InspectionResponse(BaseModel):
+    id: int
+    inspection_number: str
+    customer_id: int
+    status: str
+    priority: str
+    vehicle_make: Optional[str]
+    vehicle_model: Optional[str]
+    vehicle_year: Optional[int]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class InspectionDetailResponse(BaseModel):
+    id: int
+    inspection_number: str
+    customer_id: int
+    inspector_id: Optional[int]
+    status: str
+    priority: str
+    vehicle_make: Optional[str]
+    vehicle_model: Optional[str]
+    vehicle_year: Optional[int]
+    vehicle_vin: Optional[str]
+    vehicle_license_plate: Optional[str]
+    vehicle_mileage: Optional[int]
+    customer_complaint: Optional[str]
+    initial_assessment: Optional[str]
+    recommendations: Optional[str]
+    estimated_repair_cost: float
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -341,9 +417,172 @@ async def get_work_order(work_order_id: int, db: Session = Depends(get_db)):
     return work_order
 
 
-@app.get("/api/v1/inspections")
-async def get_inspections(db: Session = Depends(get_db)):
-    return []
+@app.post("/api/v1/inspections", response_model=InspectionResponse)
+async def create_inspection(inspection_data: InspectionCreate, db: Session = Depends(get_db)):
+    from datetime import datetime as dt
+    import uuid
+    
+    timestamp = dt.now().strftime('%Y%m%d%H%M%S')
+    unique_id = str(uuid.uuid4())[:8]
+    inspection_number = f"INS-{timestamp}-{unique_id}"
+    
+    new_inspection = InspectionModel(
+        inspection_number=inspection_number,
+        customer_id=inspection_data.customer_id,
+        created_by=1,
+        vehicle_make=inspection_data.vehicle_make,
+        vehicle_model=inspection_data.vehicle_model,
+        vehicle_year=inspection_data.vehicle_year,
+        vehicle_vin=inspection_data.vehicle_vin,
+        vehicle_license_plate=inspection_data.vehicle_license_plate,
+        vehicle_mileage=inspection_data.vehicle_mileage,
+        vehicle_color=inspection_data.vehicle_color,
+        inspection_type=inspection_data.inspection_type,
+        customer_complaint=inspection_data.customer_complaint,
+        priority=inspection_data.priority,
+        status="Draft"
+    )
+    
+    db.add(new_inspection)
+    db.commit()
+    db.refresh(new_inspection)
+    
+    return new_inspection
+
+
+@app.get("/api/v1/inspections", response_model=List[InspectionResponse])
+async def get_inspections(
+    status: Optional[str] = None,
+    customer_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(InspectionModel)
+    
+    if status:
+        query = query.filter(InspectionModel.status == status)
+    if customer_id:
+        query = query.filter(InspectionModel.customer_id == customer_id)
+    
+    inspections = query.order_by(InspectionModel.created_at.desc()).all()
+    return inspections
+
+
+@app.get("/api/v1/inspections/{inspection_id}", response_model=InspectionDetailResponse)
+async def get_inspection(inspection_id: int, db: Session = Depends(get_db)):
+    inspection = db.query(InspectionModel).filter(InspectionModel.id == inspection_id).first()
+    if not inspection:
+        raise HTTPException(status_code=404, detail="Inspection not found")
+    return inspection
+
+
+@app.put("/api/v1/inspections/{inspection_id}/status")
+async def update_inspection_status(
+    inspection_id: int,
+    status_update: InspectionStatusUpdate,
+    db: Session = Depends(get_db)
+):
+    ALLOWED_STATUSES = ["Draft", "Pending", "In_Progress", "Completed", "Approved", "Rejected"]
+    
+    if status_update.status not in ALLOWED_STATUSES:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid status. Allowed values: {', '.join(ALLOWED_STATUSES)}"
+        )
+    
+    inspection = db.query(InspectionModel).filter(InspectionModel.id == inspection_id).first()
+    if not inspection:
+        raise HTTPException(status_code=404, detail="Inspection not found")
+    
+    inspection.status = status_update.status
+    if status_update.notes:
+        inspection.notes = status_update.notes
+    
+    db.commit()
+    db.refresh(inspection)
+    
+    return {"message": "Status updated successfully", "inspection_id": inspection_id, "new_status": status_update.status}
+
+
+@app.post("/api/v1/inspections/{inspection_id}/faults")
+async def add_inspection_fault(inspection_id: int, fault_data: InspectionFaultCreate, db: Session = Depends(get_db)):
+    inspection = db.query(InspectionModel).filter(InspectionModel.id == inspection_id).first()
+    if not inspection:
+        raise HTTPException(status_code=404, detail="Inspection not found")
+    
+    if fault_data.inspection_id != inspection_id:
+        raise HTTPException(status_code=400, detail="Inspection ID mismatch between path and body")
+    
+    new_fault = InspectionFaultModel(
+        inspection_id=inspection_id,
+        category=fault_data.category,
+        description=fault_data.description,
+        severity=fault_data.severity,
+        location=fault_data.location,
+        estimated_cost=fault_data.estimated_cost,
+        estimated_duration=fault_data.estimated_duration,
+        requires_immediate_attention=fault_data.requires_immediate_attention,
+        is_safety_critical=fault_data.is_safety_critical,
+        recommended_action=fault_data.recommended_action,
+        created_by=1
+    )
+    
+    db.add(new_fault)
+    db.commit()
+    db.refresh(new_fault)
+    
+    return {"message": "Fault added successfully", "fault_id": new_fault.id}
+
+
+@app.get("/api/v1/inspections/{inspection_id}/faults")
+async def get_inspection_faults(inspection_id: int, db: Session = Depends(get_db)):
+    faults = db.query(InspectionFaultModel).filter(
+        InspectionFaultModel.inspection_id == inspection_id
+    ).all()
+    return faults
+
+
+@app.post("/api/v1/inspections/{inspection_id}/photos")
+async def upload_inspection_photo(
+    inspection_id: int,
+    file: UploadFile = File(...),
+    caption: Optional[str] = None,
+    photo_type: str = "general",
+    db: Session = Depends(get_db)
+):
+    inspection = db.query(InspectionModel).filter(InspectionModel.id == inspection_id).first()
+    if not inspection:
+        raise HTTPException(status_code=404, detail="Inspection not found")
+    
+    file_info = await save_inspection_photo(file)
+    
+    photo = InspectionPhotoModel(
+        inspection_id=inspection_id,
+        file_path=file_info["file_path"],
+        file_name=file_info["file_name"],
+        file_size=file_info["file_size"],
+        mime_type=file_info["mime_type"],
+        photo_type=photo_type,
+        caption=caption,
+        uploaded_by=1
+    )
+    
+    db.add(photo)
+    db.commit()
+    db.refresh(photo)
+    
+    return {
+        "message": "Photo uploaded successfully",
+        "photo_id": photo.id,
+        "file_name": file_info["file_name"]
+    }
+
+
+@app.get("/api/v1/inspections/{inspection_id}/photos")
+async def get_inspection_photos(inspection_id: int, db: Session = Depends(get_db)):
+    photos = db.query(InspectionPhotoModel).filter(
+        InspectionPhotoModel.inspection_id == inspection_id
+    ).all()
+    return photos
 
 
 @app.get("/api/v1/dashboard/stats", response_model=DashboardStats)
