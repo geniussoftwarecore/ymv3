@@ -1,24 +1,39 @@
 """
 Yaman Hybrid Workshop Management System - Consolidated Backend
-This is a consolidated FastAPI application for running on Replit without Docker
+This is a consolidated FastAPI application for running on Replit with PostgreSQL
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
+from sqlalchemy.orm import Session
+from sqlalchemy import func, text
+import bcrypt
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
 import os
 from pathlib import Path
 
-# Initialize FastAPI app
+from database import get_db, SessionLocal
+from models import (
+    User as UserModel,
+    Service as ServiceModel,
+    ServiceCategory as ServiceCategoryModel,
+    WorkOrder as WorkOrderModel,
+    ChatRoom as ChatRoomModel,
+    UserRole,
+    UserStatus,
+    WorkOrderStatus
+)
+
 app = FastAPI(
     title="Yaman Workshop Management System",
     description="نظام إدارة ورش يمن الهجين - Workshop Management System",
     version="1.0.0"
 )
 
-# CORS middleware - allow all origins for development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,58 +42,75 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mock data storage (will be replaced with database later)
-users_db = [
-    {"id": 1, "username": "admin", "email": "admin@yaman.com", "role": "Admin", "full_name": "System Administrator"},
-    {"id": 2, "username": "engineer1", "email": "eng1@yaman.com", "role": "Engineer", "full_name": "محمد أحمد"},
-]
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-customers_db = [
-    {"id": 1, "name": "أحمد محمد", "phone": "+967771234567", "email": "ahmed@example.com"},
-    {"id": 2, "name": "فاطمة علي", "phone": "+967771234568", "email": "fatima@example.com"},
-]
 
-work_orders_db = []
-inspections_db = []
-services_db = [
-    {"id": 1, "name": "Oil Change", "name_ar": "تغيير الزيت", "price": 5000, "duration": 30},
-    {"id": 2, "name": "Brake Service", "name_ar": "خدمة الفرامل", "price": 15000, "duration": 120},
-]
-
-# Pydantic Models
 class LoginRequest(BaseModel):
     username: str
     password: str
 
-class User(BaseModel):
+
+class UserResponse(BaseModel):
     id: int
     username: str
     email: str
     role: str
     full_name: str
+    phone: Optional[str] = None
+    is_active: bool
 
-class Customer(BaseModel):
-    id: int
-    name: str
-    phone: str
-    email: Optional[str] = None
+    class Config:
+        from_attributes = True
 
-class Service(BaseModel):
+
+class ServiceResponse(BaseModel):
     id: int
     name: str
     name_ar: str
-    price: float
-    duration: int
+    base_price: float
+    estimated_duration: Optional[int]
+    status: str
 
-# Root endpoint - serve frontend
+    class Config:
+        from_attributes = True
+
+
+class WorkOrderResponse(BaseModel):
+    id: int
+    order_number: str
+    title: str
+    status: str
+    priority: str
+    customer_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DashboardStats(BaseModel):
+    total_customers: int
+    total_work_orders: int
+    total_services: int
+    active_work_orders: int
+    completed_today: int
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    try:
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    except Exception:
+        return False
+
+
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    """Serve the main frontend page"""
     frontend_path = Path("static/index.html")
     if frontend_path.exists():
         return FileResponse(frontend_path)
     
-    # If no frontend file, return welcome message
     return """
     <!DOCTYPE html>
     <html dir="rtl" lang="ar">
@@ -154,8 +186,9 @@ async def root():
             <div class="info">
                 <h2>✅ System Status</h2>
                 <p><span class="status">🟢 Backend Running</span></p>
+                <p><span class="status">🗄️ Database Connected</span></p>
                 <p>Version: 1.0.0</p>
-                <p>Environment: Replit Development</p>
+                <p>Environment: Replit Production</p>
             </div>
             
             <div class="info">
@@ -184,134 +217,192 @@ async def root():
             </div>
             
             <div class="info">
-                <h2>ℹ️ Setup Information</h2>
-                <p>This system is running on Replit with a consolidated backend.</p>
-                <p>📝 <strong>Note:</strong> Database setup is required for persistent data storage.</p>
-                <p>The system currently uses mock data for demonstration purposes.</p>
+                <h2>🔑 Demo Credentials</h2>
+                <p><strong>Username:</strong> admin</p>
+                <p><strong>Password:</strong> admin123</p>
             </div>
         </div>
     </body>
     </html>
     """
 
+
 @app.get("/health")
-async def health_check():
-    """Health check endpoint"""
+async def health_check(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+        db_status = "connected"
+        user_count = db.query(UserModel).count()
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+        user_count = 0
+    
     return {
         "status": "healthy",
         "service": "yaman_workshop_system",
         "version": "1.0.0",
-        "database": "mock_data" if os.getenv("DATABASE_URL") is None else "connected"
+        "database": db_status,
+        "users_in_db": user_count
     }
 
-# API v1 Endpoints
 
-# Authentication
 @app.post("/api/v1/auth/login")
-async def login(credentials: LoginRequest):
-    """User login endpoint"""
-    # Mock authentication - will be replaced with real auth
-    for user in users_db:
-        if user["username"] == credentials.username:
-            # In real app, verify password hash
-            return {
-                "access_token": "mock_token_" + user["username"],
-                "token_type": "bearer",
-                "user": user
-            }
-    raise HTTPException(status_code=401, detail="Invalid credentials")
-
-# Users
-@app.get("/api/v1/users", response_model=List[User])
-async def get_users():
-    """Get all users"""
-    return users_db
-
-@app.get("/api/v1/users/{user_id}", response_model=User)
-async def get_user(user_id: int):
-    """Get user by ID"""
-    for user in users_db:
-        if user["id"] == user_id:
-            return user
-    raise HTTPException(status_code=404, detail="User not found")
-
-# Customers
-@app.get("/api/v1/customers", response_model=List[Customer])
-async def get_customers():
-    """Get all customers"""
-    return customers_db
-
-@app.get("/api/v1/customers/{customer_id}", response_model=Customer)
-async def get_customer(customer_id: int):
-    """Get customer by ID"""
-    for customer in customers_db:
-        if customer["id"] == customer_id:
-            return customer
-    raise HTTPException(status_code=404, detail="Customer not found")
-
-# Services
-@app.get("/api/v1/services", response_model=List[Service])
-async def get_services():
-    """Get all services"""
-    return services_db
-
-@app.get("/api/v1/services/{service_id}", response_model=Service)
-async def get_service(service_id: int):
-    """Get service by ID"""
-    for service in services_db:
-        if service["id"] == service_id:
-            return service
-    raise HTTPException(status_code=404, detail="Service not found")
-
-# Work Orders
-@app.get("/api/v1/work-orders")
-async def get_work_orders():
-    """Get all work orders"""
-    return work_orders_db
-
-# Inspections
-@app.get("/api/v1/inspections")
-async def get_inspections():
-    """Get all inspections"""
-    return inspections_db
-
-# Dashboard stats
-@app.get("/api/v1/dashboard/stats")
-async def get_dashboard_stats():
-    """Get dashboard statistics"""
+async def login(credentials: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(UserModel).filter(UserModel.username == credentials.username).first()
+    
+    if not user or not verify_password(credentials.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="User account is inactive")
+    
+    user.last_login = datetime.utcnow()
+    db.commit()
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = jwt.encode(
+        {"sub": user.username, "exp": datetime.utcnow() + access_token_expires},
+        SECRET_KEY,
+        algorithm=ALGORITHM
+    )
+    
     return {
-        "total_customers": len(customers_db),
-        "total_work_orders": len(work_orders_db),
-        "total_inspections": len(inspections_db),
-        "total_services": len(services_db),
-        "active_work_orders": 0,
-        "pending_inspections": 0,
-        "completed_today": 0,
-        "revenue_today": 0
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "role": user.role,
+            "full_name": user.full_name
+        }
     }
 
-# Reports
+
+@app.get("/api/v1/users", response_model=List[UserResponse])
+async def get_users(db: Session = Depends(get_db)):
+    users = db.query(UserModel).filter(UserModel.is_active == True).all()
+    return users
+
+
+@app.get("/api/v1/users/{user_id}", response_model=UserResponse)
+async def get_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@app.get("/api/v1/customers", response_model=List[UserResponse])
+async def get_customers(db: Session = Depends(get_db)):
+    customers = db.query(UserModel).filter(
+        UserModel.role == 'Customer',
+        UserModel.is_active == True
+    ).all()
+    return customers
+
+
+@app.get("/api/v1/customers/{customer_id}", response_model=UserResponse)
+async def get_customer(customer_id: int, db: Session = Depends(get_db)):
+    customer = db.query(UserModel).filter(
+        UserModel.id == customer_id,
+        UserModel.role == 'Customer'
+    ).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return customer
+
+
+@app.get("/api/v1/services", response_model=List[ServiceResponse])
+async def get_services(db: Session = Depends(get_db)):
+    services = db.query(ServiceModel).filter(ServiceModel.status == 'Available').all()
+    return services
+
+
+@app.get("/api/v1/services/{service_id}", response_model=ServiceResponse)
+async def get_service(service_id: int, db: Session = Depends(get_db)):
+    service = db.query(ServiceModel).filter(ServiceModel.id == service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+    return service
+
+
+@app.get("/api/v1/work-orders", response_model=List[WorkOrderResponse])
+async def get_work_orders(db: Session = Depends(get_db)):
+    work_orders = db.query(WorkOrderModel).order_by(WorkOrderModel.created_at.desc()).all()
+    return work_orders
+
+
+@app.get("/api/v1/work-orders/{work_order_id}", response_model=WorkOrderResponse)
+async def get_work_order(work_order_id: int, db: Session = Depends(get_db)):
+    work_order = db.query(WorkOrderModel).filter(WorkOrderModel.id == work_order_id).first()
+    if not work_order:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    return work_order
+
+
+@app.get("/api/v1/inspections")
+async def get_inspections(db: Session = Depends(get_db)):
+    return []
+
+
+@app.get("/api/v1/dashboard/stats", response_model=DashboardStats)
+async def get_dashboard_stats(db: Session = Depends(get_db)):
+    total_customers = db.query(UserModel).filter(UserModel.role == 'Customer').count()
+    total_work_orders = db.query(WorkOrderModel).count()
+    total_services = db.query(ServiceModel).count()
+    active_work_orders = db.query(WorkOrderModel).filter(
+        WorkOrderModel.status == 'In_Progress'
+    ).count()
+    
+    today = datetime.utcnow().date()
+    completed_today = db.query(WorkOrderModel).filter(
+        WorkOrderModel.status == 'Completed',
+        func.date(WorkOrderModel.completed_at) == today
+    ).count()
+    
+    return {
+        "total_customers": total_customers,
+        "total_work_orders": total_work_orders,
+        "total_services": total_services,
+        "active_work_orders": active_work_orders,
+        "completed_today": completed_today
+    }
+
+
 @app.get("/api/v1/reports/summary")
-async def get_reports_summary():
-    """Get reports summary"""
+async def get_reports_summary(db: Session = Depends(get_db)):
+    top_services = db.query(ServiceModel).filter(
+        ServiceModel.is_featured == True
+    ).limit(3).all()
+    
+    recent_work_orders = db.query(WorkOrderModel).order_by(
+        WorkOrderModel.created_at.desc()
+    ).limit(5).all()
+    
     return {
         "daily_revenue": 0,
         "weekly_revenue": 0,
         "monthly_revenue": 0,
-        "top_services": services_db[:3],
-        "recent_work_orders": work_orders_db[:5]
+        "top_services": [
+            {"id": s.id, "name": s.name, "name_ar": s.name_ar, "base_price": float(s.base_price)}
+            for s in top_services
+        ],
+        "recent_work_orders": [
+            {"id": wo.id, "order_number": wo.order_number, "title": wo.title, "status": wo.status}
+            for wo in recent_work_orders
+        ]
     }
 
-# AI Chatbot
+
 @app.post("/api/v1/ai/ask")
 async def ai_chatbot_ask(question: dict):
-    """AI Chatbot endpoint - will integrate with OpenAI later"""
     return {
         "answer": "شكراً لسؤالك. نظام الذكاء الاصطناعي قيد التطوير حالياً. (AI system is under development)",
         "confidence": 0.5
     }
 
-# Serve static files if they exist
+
 static_dir = Path("static")
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory="static"), name="static")
