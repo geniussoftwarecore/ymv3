@@ -3,8 +3,8 @@
 ## Overview
 Complete workshop management system for hybrid vehicle services with multi-role support, workflow automation, AI chatbot, and comprehensive reporting.
 
-**Current Status**: Foundation Complete ✅ - Ready for Phase 2 Development
-**Version**: 1.0.0
+**Current Status**: Phase 2.1 Complete ✅ - Inspection System Operational
+**Version**: 1.1.0
 **Last Updated**: November 8, 2025
 
 ## Quick Start
@@ -54,8 +54,12 @@ Complete workshop management system for hybrid vehicle services with multi-role 
 - [x] Admin user created
 - [x] Sample data loaded
 
-### 📋 Phase 2: Core Workflow (IN PLANNING)
-- [ ] 2.1: Inspection system with file uploads
+### 🚀 Phase 2: Core Workflow (IN PROGRESS)
+- [x] 2.1: Inspection system with file uploads ✅
+  - Collision-resistant inspection numbering (UUID-based)
+  - File upload system with validation
+  - Fault tracking and photo management
+  - 8 REST API endpoints operational
 - [ ] 2.2: Sales & quote generation with e-signatures
 - [ ] 2.3: Work order execution with engineer task tracking
 - [ ] 2.4: Supervisor quality check
@@ -86,19 +90,19 @@ Complete workshop management system for hybrid vehicle services with multi-role 
 ## Project Structure
 ```
 /
-├── app.py              # Main FastAPI application
+├── app.py              # Main FastAPI application (600+ lines)
 ├── database.py         # Database connection & session management
-├── models.py           # SQLAlchemy ORM models (467 lines)
+├── models.py           # SQLAlchemy ORM models (500+ lines)
+├── file_utils.py       # File upload utilities & validation
 ├── init_database.py    # Database initialization script
+├── uploads/            # File storage
+│   └── inspections/    # Inspection photos & attachments
 ├── database/
 │   └── init-scripts/   # SQL initialization scripts
 ├── static/             # Frontend static files
 │   └── index.html      # Login page
-├── backend/            # Microservices (legacy structure)
-│   └── services/       # Individual service components
-└── .local/state/replit/agent/
-    └── progress_tracker.md  # Import progress tracking
-
+└── backend/            # Microservices (legacy structure)
+    └── services/       # Individual service components
 ```
 
 ## API Endpoints (Current)
@@ -118,6 +122,16 @@ Complete workshop management system for hybrid vehicle services with multi-role 
 ### Work Orders
 - `GET /api/v1/work-orders` - List work orders
 - `GET /api/v1/work-orders/{id}` - Get work order details
+
+### Inspections ✨ NEW
+- `POST /api/v1/inspections` - Create new inspection
+- `GET /api/v1/inspections` - List all inspections
+- `GET /api/v1/inspections/{id}` - Get inspection details with faults
+- `PUT /api/v1/inspections/{id}/status` - Update inspection status
+- `POST /api/v1/inspections/{id}/faults` - Add fault to inspection
+- `GET /api/v1/inspections/{id}/faults` - List inspection faults
+- `POST /api/v1/inspections/{id}/photos` - Upload inspection photo
+- `GET /api/v1/inspections/{id}/photos` - Get inspection photos
 
 ### Dashboard & Reports
 - `GET /api/v1/dashboard/stats` - Dashboard statistics
@@ -150,11 +164,31 @@ Complete workshop management system for hybrid vehicle services with multi-role 
 - Database uses connection pooling (10 connections, 20 max overflow)
 - JWT tokens expire after 30 minutes
 
+## Implementation Details
+
+### Phase 2.1: Inspection System
+**Architecture Decisions:**
+- Collision-resistant inspection numbering: `INS-YYYYMMDDHHMMSS-UUID8`
+- Status workflow validation: Draft → Pending → In_Progress → Completed → Approved/Rejected
+- Path/body ID validation for security
+- File upload with size limits (10MB) and type validation (images only)
+
+**Models Created:**
+1. `Inspection` - Main inspection record with vehicle details
+2. `InspectionFault` - Individual faults/issues found during inspection
+3. `InspectionPhoto` - Photo attachments with metadata
+
+**File Upload System:**
+- Supported formats: JPEG, PNG, GIF, WebP
+- Max file size: 10MB per file
+- Storage: `/uploads/inspections/`
+- Validation: MIME type checking, file extension verification
+
 ## Next Steps
-1. Start Phase 2.1: Build inspection system with file upload capability
-2. Search for Replit integrations for external services (WhatsApp, Email, AI)
+1. Phase 2.2: Build quote generation system with e-signatures
+2. Search for Replit integrations for e-signature service
 3. Implement role-based access control middleware
-4. Build frontend UI for each workflow phase
+4. Build frontend UI for inspection workflow
 
 ## Notes
 - Replit PostgreSQL database is development only
